@@ -1,8 +1,8 @@
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " sort_python_imports.vim - sorts python imports alphabetically
 " Author: Krzysiek Goj <bin-krzysiek#at#poczta.gazeta.pl>
-" Version: 1.1
-" Last Change: 2008-05-02
+" Version: 1.3
+" Last Change: 2012-03-08
 " URL: http://tbw13.blogspot.com
 " Requires: Python and Vim compiled with +python option
 " Licence: This script is released under the Vim License.
@@ -15,6 +15,8 @@
 " use <C-i> to sort imports in those lines.
 "
 " Changelog:
+"  1.3 - A future statement must appear near the top of the module
+"        http://docs.python.org/reference/simple_stmts.html#future
 "  1.2 - bugfix: from foo import (bar, baz)
 "        Now requires only python 2.3 (patch from Konrad Delong)
 "  1.1 - bugfix: from foo.bar import baz
@@ -31,6 +33,7 @@ import vim
 import re
 from sets import Set
 
+__future_import_re = re.compile('(?P<indent>\s*)from\s+__future__\s+import\s(?P<items>[^#]*)(?P<comment>(#.*)?)')
 __global_import_re = re.compile('(?P<indent>\s*)import\s(?P<items>[^#]*)(?P<comment>(#.*)?)')
 __from_import_re = re.compile('(?P<indent>\s*)from\s+(?P<module>\S*)\s+import\s(?P<items>[^#]*)(?P<comment>(#.*)?)')
 __boring_re = re.compile('\s*(#.*)?$')
@@ -41,6 +44,11 @@ def sorted(l, key=lambda x: x):
     l.sort()
     l = map(lambda pair: pair[1], l)
     return l
+
+
+def is_future_import(line):
+    """checks if line is a 'from __future__ import ...'"""
+    return __future_import_re.match(line) is not None
 
 
 def is_global_import(line):
@@ -141,6 +149,7 @@ def repair_any(line):
 def fixed(lines):
     """returns fixed lines"""
     def rank(line):
+        if is_future_import(line): return 3
         if is_global_import(line): return 2
         if is_from_import(line): return 1
         if is_boring(line): return 0
@@ -157,3 +166,4 @@ EOF
 
 command! PyFixImports python fix_safely(vim.current.buffer)
 autocmd FileType python,scons vnoremap <C-i> :python vim.current.range[:]=fixed(vim.current.range)<CR>
+
